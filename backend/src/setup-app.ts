@@ -1,12 +1,19 @@
-import { ValidationPipe, type INestApplication } from "@nestjs/common";
+import {
+  BadRequestException,
+  ValidationPipe,
+  type INestApplication,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { type ValidationError } from "class-validator";
+import cookieParser from "cookie-parser";
 
 import { ApiExceptionFilter } from "@/common/filters/api-exception.filter";
 
 export function setupApp(app: INestApplication): void {
   const config = app.get(ConfigService);
 
+  app.use(cookieParser());
   app.setGlobalPrefix("api/v1", { exclude: ["health"] });
   app.enableCors({
     origin: config.getOrThrow<string>("CORS_ORIGIN"),
@@ -17,6 +24,13 @@ export function setupApp(app: INestApplication): void {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      exceptionFactory: (errors: ValidationError[]) =>
+        new BadRequestException({
+          error: "VALIDATION_ERROR",
+          message: errors.flatMap((error) =>
+            Object.values(error.constraints ?? {}),
+          ),
+        }),
     }),
   );
   app.useGlobalFilters(new ApiExceptionFilter());
@@ -30,7 +44,7 @@ export function setupApp(app: INestApplication): void {
         .setTitle("Squad of Champions")
         .setDescription("API for the Squad of Champions challenge")
         .setVersion("1.0")
-        .addBearerAuth()
+        .addCookieAuth("access_token")
         .build(),
     ),
   );

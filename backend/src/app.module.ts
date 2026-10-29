@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 
+import { AuthModule } from "@/auth/auth.module";
 import { CharactersModule } from "@/characters/characters.module";
 import { validateEnvironment } from "@/config/environment";
 import { HealthModule } from "@/health/health.module";
@@ -14,6 +15,7 @@ import { RedisModule } from "@/redis/redis.module";
     RedisModule,
     HealthModule,
     CharactersModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

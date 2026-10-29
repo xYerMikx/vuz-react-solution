@@ -35,6 +35,17 @@ Read-through cache:
 
 ## End to end
 
+Auth, against PostgreSQL:
+
+- a password shorter than 8 characters is `400` / `VALIDATION_ERROR`
+- register returns the user, sets `httpOnly` `SameSite=Strict` cookies, and does not put a token in the body
+- `GET /auth/me` reads the user from the access cookie
+- registering the same email again, in any letter case, is `409` / `EMAIL_TAKEN`
+- an unknown email and a wrong password are both `401` / `INVALID_CREDENTIALS`
+- refresh replaces the refresh cookie; presenting the previous one revokes every session, including the replacement
+- logout makes the old refresh cookie fail
+- `GET /auth/me` without an access cookie is `401`
+
 Characters, against the seeded database:
 
 - a page of one character, then the next page, and the ids differ

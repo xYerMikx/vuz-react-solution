@@ -48,6 +48,20 @@ The hash covers search, tags, universe, limit, cursor and sort. Tags are sorted 
 
 Each entry lives for 10 minutes. After a new seed the version no longer matches, so old keys are never read and expire on their own
 
+### Auth
+
+| Method | Path                    | Behaviour                                                                                    |
+| ------ | ----------------------- | -------------------------------------------------------------------------------------------- |
+| POST   | `/api/v1/auth/register` | Creates a user and starts a session. Body: `{ email, password }`. Response: `{ id, email }`. |
+| POST   | `/api/v1/auth/login`    | Starts a session for an existing user. Same body and response.                               |
+| POST   | `/api/v1/auth/refresh`  | Rotates the refresh cookie and sets a new access cookie.                                     |
+| POST   | `/api/v1/auth/logout`   | Revokes the current refresh token and clears both cookies.                                   |
+| GET    | `/api/v1/auth/me`       | The user for the access cookie.                                                              |
+
+The challenge does not say what registration should do when the email is already taken. This API answers `409` and `EMAIL_TAKEN`. Login answers `401` and `INVALID_CREDENTIALS` both for an unknown email and for a wrong password, so login cannot be used to discover which addresses exist.
+
+Both tokens are `httpOnly` and `SameSite=Strict` cookies. The response body never contains them. The access cookie is a 15-minute JWT, path `/api/v1`. The refresh cookie is a random value stored only as a SHA-256 hash, path `/api/v1/auth`, and it lasts 30 days. After a reload the browser sends the access cookie with `GET /auth/me`. When that cookie has expired, `POST /auth/refresh` sends the refresh cookie and replaces both. A refresh token that was already rotated revokes every session of that user.
+
 To work on the API without rebuilding the image, stop the `backend` service and run it on the host:
 
 ```bash
