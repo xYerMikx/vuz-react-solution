@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Universe {
+  id         Int         @id @default(autoincrement())
+  name       String      @unique
+  characters Character[]
+}
+
+model Tag {
+  id            Int            @id @default(autoincrement())
+  name          String         @unique
+  characterTags CharacterTag[]
+}
+
+model Ability {
+  id                 Int                @id @default(autoincrement())
+  name               String             @unique
+  characterAbilities CharacterAbility[]
+}
+
+model Character {
+  id         Int                @id
+  name       String
+  quote      String?
+  image      String
+  thumbnail  String?
+  universeId Int
+  universe   Universe           @relation(fields: [universeId], references: [id])
+  tags       CharacterTag[]
+  abilities  CharacterAbility[]
+  members    SquadMember[]
+
+  @@index([universeId])
+  @@index([name, id])
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "Character_name_trgm_idx", type: Gin)
+}
+
+model CharacterTag {
+  characterId Int
+  tagId       Int
+  slot        Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  tag         Tag       @relation(fields: [tagId], references: [id])
+
+  @@id([characterId, tagId])
+  @@index([tagId])
+}
+
+model CharacterAbility {
+  characterId Int
+  abilityId   Int
+  score       Int
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  ability     Ability   @relation(fields: [abilityId], references: [id])
+
+  @@id([characterId, abilityId])
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  createdAt     DateTime       @default(now())
+  refreshTokens RefreshToken[]
+  squads        Squad[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Squad {
+  id        String        @id @default(uuid())
+  userId    String
+  name      String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members   SquadMember[]
+
+  @@index([userId])
+}
+
+model SquadMember {
+  squadId     String
+  characterId Int
+  position    Int
+  addedAt     DateTime  @default(now())
+  squad       Squad     @relation(fields: [squadId], references: [id], onDelete: Cascade)
+  character   Character @relation(fields: [characterId], references: [id])
+
+  @@id([squadId, characterId])
+}
