@@ -40,6 +40,8 @@ services:
       REDIS_URL: redis://redis:6379
       PORT: ${PORT}
       CORS_ORIGIN: ${CORS_ORIGIN}
+      JWT_SECRET: ${JWT_SECRET}
+      COOKIE_SECURE: ${COOKIE_SECURE}
     depends_on:
       postgres:
         condition: service_healthy
