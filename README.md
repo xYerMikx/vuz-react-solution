@@ -62,6 +62,24 @@ The challenge does not say what registration should do when the email is already
 
 Both tokens are `httpOnly` and `SameSite=Strict` cookies. The response body never contains them. The access cookie is a 15-minute JWT, path `/api/v1`. The refresh cookie is a random value stored only as a SHA-256 hash, path `/api/v1/auth`, and it lasts 30 days. After a reload the browser sends the access cookie with `GET /auth/me`. When that cookie has expired, `POST /auth/refresh` sends the refresh cookie and replaces both. A refresh token that was already rotated revokes every session of that user.
 
+### Squads
+
+Every squad route requires the access cookie. The challenge says a user can only see and change their own squads, and it does not say what happens when the id belongs to someone else. This API treats that as an IDOR rule, not as an extra check after a lookup: `userId` from the cookie is part of the query. A squad owned by another user and a squad that does not exist both answer `404` and `SQUAD_NOT_FOUND`. `403` would confirm that the id is real.
+
+| Method | Path                                         | Behaviour                                                                |
+| ------ | -------------------------------------------- | ------------------------------------------------------------------------ |
+| GET    | `/api/v1/squads`                             | The current user's squads, without statistics.                           |
+| POST   | `/api/v1/squads`                             | Creates a squad. Body: `{ name, characterIds? }`. At most 6 ids.         |
+| GET    | `/api/v1/squads/:id`                         | One squad, its characters, and ability averages.                         |
+| PATCH  | `/api/v1/squads/:id`                         | Renames and/or replaces the whole roster. Order of ids becomes position. |
+| DELETE | `/api/v1/squads/:id`                         | Deletes the squad and its members.                                       |
+| POST   | `/api/v1/squads/:id/characters/:characterId` | Adds a character at the next position.                                   |
+| DELETE | `/api/v1/squads/:id/characters/:characterId` | Removes a character.                                                     |
+
+A squad has at most 6 characters. Two adds at the same time lock the squad row (`SELECT ... FOR UPDATE`), recount, and only then insert, so the seventh member is `422` `SQUAD_FULL` and the table never holds more than 6. The primary key `(squadId, characterId)` makes a duplicate `409` `DUPLICATE_MEMBER`. An unknown character id is `422` `CHARACTER_NOT_FOUND`. Removing a character who is not in the squad is `404` `MEMBER_NOT_FOUND`; the challenge does not name that case.
+
+The stored name is trimmed and must be 1–40 characters. The challenge does not set a length. Averages are `AVG` in SQL, rounded to 2 decimals. An empty squad has an empty statistics list.
+
 To work on the API without rebuilding the image, stop the `backend` service and run it on the host:
 
 ```bash

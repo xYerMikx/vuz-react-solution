@@ -33,6 +33,13 @@ Read-through cache:
 - unreadable JSON is treated as a miss and loaded again
 - a failed version read is reported as unavailable, so the caller skips the cache
 
+Squad rules:
+
+- a seventh id is `SQUAD_FULL`, a repeated id is `DUPLICATE_MEMBER`
+- a duplicate on an already full squad is still reported as a duplicate
+- an empty roster is allowed
+- a squad name is trimmed, and an empty name or a name longer than 40 characters is rejected
+
 ## End to end
 
 Auth, against PostgreSQL:
@@ -45,6 +52,21 @@ Auth, against PostgreSQL:
 - refresh replaces the refresh cookie; presenting the previous one revokes every session, including the replacement
 - logout makes the old refresh cookie fail
 - `GET /auth/me` without an access cookie is `401`
+
+Squads, against PostgreSQL, with two registered users. The guard is on every route:
+
+- `GET` and `POST /squads` without an access cookie are `401`
+- a squad created by one user is absent from the other user's list
+- the other user's `GET`, `PATCH`, `DELETE`, add, and remove on that id are all `404` / `SQUAD_NOT_FOUND`
+- the stored name is trimmed
+- rename, replace the roster, remove a member, delete the squad
+- removing a character who is not in the squad is `404` / `MEMBER_NOT_FOUND`
+- adding the same character twice is `409` / `DUPLICATE_MEMBER`
+- an unknown character id is `422` / `CHARACTER_NOT_FOUND`
+- the seventh character is `422` / `SQUAD_FULL`, and the squad still has 6
+- two parallel adds into a squad of 5 finish as one `201` and one `422`, and the squad has 6 members
+- two parallel adds of the same character finish as one `201` and one `409`, and the squad has 1 member
+- ability averages match the seeded scores and change after a member is removed
 
 Characters, against the seeded database:
 

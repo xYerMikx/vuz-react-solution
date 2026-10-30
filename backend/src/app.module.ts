@@ -7,6 +7,7 @@ import { validateEnvironment } from "@/config/environment";
 import { HealthModule } from "@/health/health.module";
 import { PrismaModule } from "@/prisma/prisma.module";
 import { RedisModule } from "@/redis/redis.module";
+import { SquadsModule } from "@/squads/squads.module";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RedisModule } from "@/redis/redis.module";
     HealthModule,
     CharactersModule,
     AuthModule,
+    SquadsModule,
   ],
 })
 export class AppModule {}
