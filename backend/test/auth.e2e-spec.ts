@@ -3,10 +3,12 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
 import type { INestApplication } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
-import request, { type Response } from "supertest";
+import request from "supertest";
 
 import { AppModule } from "@/app.module";
 import { setupApp } from "@/setup-app";
+
+import { cookieLines, cookieValue } from "./cookie";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -18,38 +20,6 @@ function readErrorCode(body: unknown): string {
   }
 
   return body.error;
-}
-
-function cookieLines(response: Response): string[] {
-  const header = response.headers["set-cookie"];
-
-  if (Array.isArray(header)) {
-    return header;
-  }
-
-  if (typeof header === "string") {
-    return [header];
-  }
-
-  return [];
-}
-
-function cookieValue(response: Response, name: string): string {
-  const line = cookieLines(response).find((item) =>
-    item.startsWith(`${name}=`),
-  );
-
-  if (!line) {
-    throw new Error(`Missing ${name} cookie`);
-  }
-
-  const pair = line.split(";")[0];
-
-  if (!pair) {
-    throw new Error(`Missing ${name} cookie`);
-  }
-
-  return pair.slice(name.length + 1);
 }
 
 function readUser(body: unknown): { id: string; email: string } {
