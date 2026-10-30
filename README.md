@@ -96,6 +96,11 @@ Test instructions and the cases covered are in [TESTING.md](TESTING.md)
 
 ```bash
 cd frontend
+cp .env.example .env
 npm install
 npm run dev
 ```
+
+The app is at http://localhost:5173. `VITE_API_URL` points at the API (`http://localhost:3000/api/v1`).
+
+The assignment does not describe the auth screens, so login and register share one form and the UI stays as small as that allows. React Hook Form and Zod were chosen so validation lives in a schema and the form owns input state: a field error updates with the current value.
