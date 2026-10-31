@@ -149,6 +149,59 @@ describe("Characters", () => {
     expect(response.body.universes.length).toBeGreaterThan(0);
   });
 
+  it("returns several characters in the requested order", async () => {
+    const page = await request(app.getHttpServer())
+      .get("/api/v1/characters")
+      .query({ limit: 2 })
+      .expect(200);
+    const ids = readPage(page.body).items.map((item) => item.id);
+    const response = await request(app.getHttpServer())
+      .get("/api/v1/characters/by-ids")
+      .query({ ids: [...ids].reverse().join(",") })
+      .expect(200);
+
+    if (!Array.isArray(response.body)) {
+      throw new Error("Unexpected characters payload");
+    }
+
+    const characters: CharacterResponse[] = [];
+
+    for (const item of response.body) {
+      if (!isCharacterResponse(item)) {
+        throw new Error("Unexpected character");
+      }
+
+      characters.push(item);
+    }
+
+    expect(characters.map((item) => item.id)).toEqual([...ids].reverse());
+    expect(characters[0]?.abilities.length).toBeGreaterThan(0);
+
+    const invalid = await request(app.getHttpServer())
+      .get("/api/v1/characters/by-ids")
+      .query({ ids: "1,2,3,4,5,6,7" })
+      .expect(400);
+    expect(readErrorCode(invalid.body)).toBe("VALIDATION_ERROR");
+
+    const duplicate = await request(app.getHttpServer())
+      .get("/api/v1/characters/by-ids")
+      .query({ ids: "2,2" })
+      .expect(400);
+    expect(readErrorCode(duplicate.body)).toBe("VALIDATION_ERROR");
+
+    const text = await request(app.getHttpServer())
+      .get("/api/v1/characters/by-ids")
+      .query({ ids: "1,nope" })
+      .expect(400);
+    expect(readErrorCode(text.body)).toBe("VALIDATION_ERROR");
+
+    const missing = await request(app.getHttpServer())
+      .get("/api/v1/characters/by-ids")
+      .query({ ids: "999999" })
+      .expect(404);
+    expect(readErrorCode(missing.body)).toBe("CHARACTER_NOT_FOUND");
+  });
+
   it("rejects an invalid cursor and an unknown id", async () => {
     const cursor = await request(app.getHttpServer())
       .get("/api/v1/characters")

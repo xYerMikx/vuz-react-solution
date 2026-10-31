@@ -25,11 +25,12 @@ That starts PostgreSQL, Redis and the API. The API container applies migrations 
 
 ### Characters
 
-| Method | Path                         | Behaviour                                                                                                                                                                                                                                              |
-| ------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Method | Path                         | Behaviour                                                                                                                                                                                                                                                                                                                        |
+| ------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | GET    | `/api/v1/characters`         | One page. Query: `search` (case-insensitive substring of the name or of any tag; `grapple` also matches the tag `grappling`), `tags` (comma-separated, a character matches if it has any of them), `universe` (narrows the page), `limit` (1–100, default 20), `cursor`, `sort` (`name` or `id`). Body: `{ items, nextCursor }`. |
-| GET    | `/api/v1/characters/filters` | Tag names in first-appearance order, then universe names. `grapple` and `grappling` stay separate.                                                                                                                                                     |
-| GET    | `/api/v1/characters/:id`     | One character. Unknown id: `404` and `CHARACTER_NOT_FOUND`.                                                                                                                                                                                            |
+| GET    | `/api/v1/characters/filters` | Tag names in first-appearance order, then universe names. `grapple` and `grappling` stay separate.                                                                                                                                                                                                                               |
+| GET    | `/api/v1/characters/by-ids`  | Several characters in one response, in the requested order, with tags and abilities. Query `ids` is 1–6 unique comma-separated ids. A bad list is `400` and `VALIDATION_ERROR`. An unknown id is `404` and `CHARACTER_NOT_FOUND`. Not cached.                                                                                    |
+| GET    | `/api/v1/characters/:id`     | One character. Unknown id: `404` and `CHARACTER_NOT_FOUND`.                                                                                                                                                                                                                                                                      |
 
 A cursor that cannot be decoded is `400` and `VALIDATION_ERROR`. `quote` and `thumbnail` are `null` when the source JSON has no value
 
@@ -104,3 +105,5 @@ npm run dev
 The app is at http://localhost:5173. `VITE_API_URL` points at the API (`http://localhost:3000/api/v1`).
 
 The assignment does not describe the auth screens, so login and register share one form and the UI stays as small as that allows. React Hook Form and Zod were chosen so validation lives in a schema and the form owns input state: a field error updates with the current value.
+
+The assignment requires a squad name and the mock has no field for one, so the first checked character creates a squad named `My team`. The screen uses the oldest squad and does not switch between them. The squad view loads its characters with one `GET /characters/by-ids` request, because a squad member payload has no tags or abilities

@@ -1,0 +1,3 @@
+export const SQUAD_FULL = "SQUAD_FULL";
+export const DUPLICATE_MEMBER = "DUPLICATE_MEMBER";
+export const MEMBER_NOT_FOUND = "MEMBER_NOT_FOUND";
