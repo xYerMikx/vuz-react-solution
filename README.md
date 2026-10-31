@@ -10,18 +10,64 @@ frontend/   React + Redux Toolkit + TypeScript app (Vite, MUI, Feature-Sliced De
 backend/    NestJS API (PostgreSQL, Redis)
 ```
 
-## Backend (development)
+## Run
 
 ```bash
 cp .env.example .env
 docker compose up -d --build
 ```
 
-That starts PostgreSQL, Redis and the API. The API container applies migrations and seeds the characters.
+That starts PostgreSQL, Redis, the API, and the squad screen. The API container applies migrations and seeds the characters before it listens. The frontend container is nginx serving the Vite build
 
+- App: http://localhost:5173
 - API: http://localhost:3000/api/v1
 - Health: http://localhost:3000/health
 - Swagger: http://localhost:3000/api/docs
+- Postman: [postman/squad-of-champions.postman_collection.json](postman/squad-of-champions.postman_collection.json)
+
+Import the collection and send **List characters**, then **Register**, then the squad requests in order. Postman keeps the session cookies. Register generates a new email on every send.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  browser[Browser]
+  web[frontend nginx]
+  api[NestJS]
+  pg[(PostgreSQL)]
+  redis[(Redis)]
+  browser --> web
+  browser -->|"cookies, /api/v1"| api
+  api --> pg
+  api --> redis
+```
+
+The page and the API are different ports on localhost, which is still one site for `SameSite=Strict`. The access cookie is sent only to `/api/v1`. The refresh cookie is sent only to `/api/v1/auth`.
+
+```mermaid
+erDiagram
+  Universe ||--o{ Character : has
+  Character ||--o{ CharacterTag : has
+  Tag ||--o{ CharacterTag : labels
+  Character ||--o{ CharacterAbility : has
+  Ability ||--o{ CharacterAbility : scores
+  User ||--o{ RefreshToken : owns
+  User ||--o{ Squad : owns
+  Squad ||--o{ SquadMember : contains
+  Character ||--o{ SquadMember : joins
+```
+
+`Character.id` is the id from the source JSON, not a sequence. `Character.name` has a trigram GIN index for the search. `SquadMember` is unique on `(squadId, characterId)`. A refresh token row stores the SHA-256 of the cookie, not the cookie itself.
+
+## Decisions
+
+The catalogue is paged with a keyset cursor because the screen only asks for the next page. List and filter responses are cached in Redis for 10 minutes under `chars:version`, which the seed increments. `GET /characters/:id` and `GET /characters/by-ids` are not cached: each is a primary-key read of at most six rows, and the squad's id set changes on every edit
+
+Auth screens were not specified, so login and register share one form. React Hook Form and Zod keep validation in a schema. A duplicate email is `409` `EMAIL_TAKEN`. Login uses `401` `INVALID_CREDENTIALS` for both an unknown email and a wrong password
+
+The design has no squad name, and the API requires one, so the first checked character creates a squad named `My team`. The screen uses the oldest squad. `My Team` is a separate control: it shows only that squad and says so. Search waits 300ms, then matches a name or a tag on the server
+
+## API
 
 ### Characters
 
@@ -81,7 +127,7 @@ A squad has at most 6 characters. Two adds at the same time lock the squad row (
 
 The stored name is trimmed and must be 1–40 characters. The challenge does not set a length. Averages are `AVG` in SQL, rounded to 2 decimals. An empty squad has an empty statistics list.
 
-To work on the API without rebuilding the image, stop the `backend` service and run it on the host:
+To work on the API without the image, stop the `backend` service and run it on the host:
 
 ```bash
 docker compose stop backend
@@ -91,9 +137,11 @@ npm install
 npm run start:dev
 ```
 
-Test instructions and the cases covered are in [TESTING.md](TESTING.md)
+Test instructions and the cases covered are in [TESTING.md](TESTING.md).
 
 ## Frontend (development)
+
+Use this instead of the frontend image when the screen is what you are changing.
 
 ```bash
 cd frontend
@@ -102,8 +150,21 @@ npm install
 npm run dev
 ```
 
-The app is at http://localhost:5173. `VITE_API_URL` points at the API (`http://localhost:3000/api/v1`).
+The dev server is also http://localhost:5173, so stop the `frontend` container first or the port is taken. `frontend/.env` supplies `VITE_API_URL` for that process. The image build uses the root `.env` instead.
 
-The assignment does not describe the auth screens, so login and register share one form and the UI stays as small as that allows. React Hook Form and Zod were chosen so validation lives in a schema and the form owns input state: a field error updates with the current value.
+## CI
 
-The assignment requires a squad name and the mock has no field for one, so the first checked character creates a squad named `My team`. The screen uses the oldest squad and does not switch between them. The squad view loads its characters with one `GET /characters/by-ids` request, because a squad member payload has no tags or abilities
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs on pushes to `main` and on pull requests. The frontend job typechecks, lints, checks formatting, and builds. The backend job does the same, then runs the unit tests and, against PostgreSQL 18 and Redis service containers, migrates, seeds, and runs the end-to-end tests.
+
+| Name                | Where    | What CI expects                                      |
+| ------------------- | -------- | ---------------------------------------------------- |
+| `VITE_API_URL`      | Variable | Public API URL baked into the CI build               |
+| `POSTGRES_USER`     | Variable | User for the Actions Postgres service                |
+| `POSTGRES_DB`       | Variable | Database name for that service                       |
+| `POSTGRES_PASSWORD` | Secret   | Password for that service                            |
+| `DATABASE_URL`      | Secret   | `postgresql://<user>:<password>@localhost:5432/<db>` |
+| `REDIS_URL`         | Variable | `redis://localhost:6379`                             |
+| `JWT_SECRET`        | Secret   | Any value used only by this job                      |
+| `COOKIE_SECURE`     | Variable | `false`                                              |
+| `CORS_ORIGIN`       | Variable | Origin of the page under test                        |
+| `PORT`              | Variable | `3000`                                               |

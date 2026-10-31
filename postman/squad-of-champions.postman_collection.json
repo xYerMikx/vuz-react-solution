@@ -1,0 +1,268 @@
+{
+  "info": {
+    "name": "Squad of Champions",
+    "description": "Run List characters first so characterId is set. Then Register, then the squad requests in order. Postman stores the httpOnly session cookies automatically. Register mints a new email on every send, so it does not collide with EMAIL_TAKEN. baseUrl defaults to http://localhost:3000/api/v1.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
+    { "key": "email", "value": "squad@example.com" },
+    { "key": "password", "value": "password1" },
+    { "key": "characterId", "value": "1" },
+    { "key": "otherCharacterId", "value": "2" },
+    { "key": "squadId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Database and Redis",
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:3000/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Characters",
+      "item": [
+        {
+          "name": "List characters",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const page = pm.response.json();",
+                  "pm.collectionVariables.set('characterId', String(page.items[0].id));",
+                  "pm.collectionVariables.set('otherCharacterId', String(page.items[1].id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/characters?limit=20&sort=name",
+              "host": ["{{baseUrl}}"],
+              "path": ["characters"],
+              "query": [
+                { "key": "limit", "value": "20" },
+                { "key": "sort", "value": "name" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search name or tag",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/characters?search=ninja&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["characters"],
+              "query": [
+                { "key": "search", "value": "ninja" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filter by tags",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/characters?tags=robot,alien&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["characters"],
+              "query": [
+                { "key": "tags", "value": "robot,alien" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Filters",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/characters/filters"
+          }
+        },
+        {
+          "name": "Characters by ids",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/characters/by-ids?ids={{characterId}},{{otherCharacterId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["characters", "by-ids"],
+              "query": [
+                {
+                  "key": "ids",
+                  "value": "{{characterId}},{{otherCharacterId}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "One character",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/characters/{{characterId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('email', 'squad-' + Date.now() + '@example.com');",
+                  "pm.collectionVariables.set('password', 'password1');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/refresh"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Squads",
+      "item": [
+        {
+          "name": "Create squad",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('squadId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My team\",\n  \"characterIds\": [{{characterId}}]\n}"
+            },
+            "url": "{{baseUrl}}/squads"
+          }
+        },
+        {
+          "name": "List squads",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/squads"
+          }
+        },
+        {
+          "name": "Get squad",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/squads/{{squadId}}"
+          }
+        },
+        {
+          "name": "Add member",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/squads/{{squadId}}/characters/{{otherCharacterId}}"
+          }
+        },
+        {
+          "name": "Remove member",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/squads/{{squadId}}/characters/{{otherCharacterId}}"
+          }
+        },
+        {
+          "name": "Rename squad",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My team\"\n}"
+            },
+            "url": "{{baseUrl}}/squads/{{squadId}}"
+          }
+        },
+        {
+          "name": "Delete squad",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/squads/{{squadId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

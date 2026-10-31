@@ -8,7 +8,7 @@ npm test
 npm run test:e2e
 ```
 
-`npm test` is Jest and does not need the databases. `npm run test:e2e` is the same runner with supertest. Nest 12 is published as ESM, and Jest only loads those packages when Node is started with `--experimental-vm-modules`, so that flag is set on the e2e script.
+`npm test` is Jest and does not need the databases. `npm run test:e2e` is the same runner with supertest. Nest 12 is published as ESM, and Jest only loads those packages when Node is started with `--experimental-vm-modules`, so that flag is set on the e2e script. The GitHub Actions workflow runs both, after migrating and seeding a fresh PostgreSQL.
 
 ## Unit
 
