@@ -16,7 +16,7 @@ export function getListCacheKey(
   const stable = { ...input, tags: [...input.tags].sort() };
   const hash = createHash("sha1").update(JSON.stringify(stable)).digest("hex");
 
-  return `chars:v${version}:${hash}`;
+  return `chars:v${version}:name-or-tag:${hash}`;
 }
 
 export function getFiltersCacheKey(version: string): string {

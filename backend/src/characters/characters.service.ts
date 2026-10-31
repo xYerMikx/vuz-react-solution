@@ -99,7 +99,18 @@ export class CharactersService {
 
     if (input.search) {
       andInput.push({
-        name: { contains: input.search, mode: "insensitive" },
+        OR: [
+          { name: { contains: input.search, mode: "insensitive" } },
+          {
+            tags: {
+              some: {
+                tag: {
+                  name: { contains: input.search, mode: "insensitive" },
+                },
+              },
+            },
+          },
+        ],
       });
     }
     if (input.tags.length > 0) {
