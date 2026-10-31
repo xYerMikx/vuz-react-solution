@@ -27,7 +27,7 @@ That starts PostgreSQL, Redis and the API. The API container applies migrations 
 
 | Method | Path                         | Behaviour                                                                                                                                                                                                                                              |
 | ------ | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| GET    | `/api/v1/characters`         | One page. Query: `search` (name, case-insensitive), `tags` (comma-separated, a character matches if it has any of them), `universe` (narrows the page), `limit` (1–100, default 20), `cursor`, `sort` (`name` or `id`). Body: `{ items, nextCursor }`. |
+| GET    | `/api/v1/characters`         | One page. Query: `search` (case-insensitive substring of the name or of any tag; `grapple` also matches the tag `grappling`), `tags` (comma-separated, a character matches if it has any of them), `universe` (narrows the page), `limit` (1–100, default 20), `cursor`, `sort` (`name` or `id`). Body: `{ items, nextCursor }`. |
 | GET    | `/api/v1/characters/filters` | Tag names in first-appearance order, then universe names. `grapple` and `grappling` stay separate.                                                                                                                                                     |
 | GET    | `/api/v1/characters/:id`     | One character. Unknown id: `404` and `CHARACTER_NOT_FOUND`.                                                                                                                                                                                            |
 
@@ -41,7 +41,7 @@ The squad builder asks for the next page while the user scrolls. It never jumps 
 
 The catalogue changes only when the seed runs. The seed increments `chars:version`. Every cache key starts with that version:
 
-- list: `chars:v{version}:{sha1 of the normalized query}`
+- list: `chars:v{version}:name-or-tag:{sha1 of the normalized query}`
 - filters: `chars:v{version}:filters`
 
 The hash covers search, tags, universe, limit, cursor and sort. Tags are sorted before hashing, so `robot,alien` and `alien,robot` are the same request

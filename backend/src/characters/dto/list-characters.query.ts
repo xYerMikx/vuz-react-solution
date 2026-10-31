@@ -3,7 +3,10 @@ import { Type } from "class-transformer";
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
 
 export class ListCharactersQuery {
-  @ApiPropertyOptional({ description: "Case-insensitive match on the name" })
+  @ApiPropertyOptional({
+    description:
+      "Case-insensitive substring of the name or of any tag. grapple also matches the tag grappling",
+  })
   @IsOptional()
   @IsString()
   search?: string;

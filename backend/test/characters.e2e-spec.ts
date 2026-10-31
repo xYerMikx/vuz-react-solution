@@ -95,6 +95,24 @@ describe("Characters", () => {
     expect(names).toContain("Scorpion");
   });
 
+  it("searches tag text and still requires the tag or the name", async () => {
+    const response = await request(app.getHttpServer())
+      .get("/api/v1/characters")
+      .query({ search: "ninja", limit: 100 })
+      .expect(200);
+
+    const items = readPage(response.body).items;
+    expect(items.some((item) => item.name === "Frost")).toBe(true);
+
+    for (const item of items) {
+      const matchesName = item.name.toLowerCase().includes("ninja");
+      const matchesTag = item.tags.some((tag) =>
+        tag.tag_name.includes("ninja"),
+      );
+      expect(matchesName || matchesTag).toBe(true);
+    }
+  });
+
   it("combines tag filters with OR", async () => {
     const response = await request(app.getHttpServer())
       .get("/api/v1/characters")
