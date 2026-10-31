@@ -77,6 +77,30 @@ export class CharactersService {
     );
   }
 
+  async findMany(ids: number[]): Promise<CharacterResponse[]> {
+    const rows = await this.prisma.character.findMany({
+      where: { id: { in: ids } },
+      include: characterInclude,
+    });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const characters: CharacterResponse[] = [];
+
+    for (const id of ids) {
+      const row = byId.get(id);
+
+      if (!row) {
+        throw new NotFoundException({
+          error: "CHARACTER_NOT_FOUND",
+          message: "Character not found",
+        });
+      }
+
+      characters.push(toCharacter(row));
+    }
+
+    return characters;
+  }
+
   async findOne(id: number): Promise<CharacterResponse> {
     const row = await this.prisma.character.findUnique({
       where: { id },

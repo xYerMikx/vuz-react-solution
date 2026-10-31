@@ -2,7 +2,9 @@ import { Controller, Get, Param, ParseIntPipe, Query } from "@nestjs/common";
 import { ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 
 import { CharactersService } from "./characters.service";
+import { FindCharactersByIdsQuery } from "./dto/find-characters-by-ids.query";
 import { ListCharactersQuery } from "./dto/list-characters.query";
+import { parseCharacterIds } from "./parse-character-ids";
 
 @ApiTags("characters")
 @Controller("characters")
@@ -23,6 +25,17 @@ export class CharactersController {
   })
   filters() {
     return this.characters.filters();
+  }
+
+  @Get("by-ids")
+  @ApiOperation({
+    summary: "Several characters in one response, in the requested order",
+  })
+  @ApiOkResponse({
+    description: "The characters, including tags and abilities",
+  })
+  findMany(@Query() query: FindCharactersByIdsQuery) {
+    return this.characters.findMany(parseCharacterIds(query.ids));
   }
 
   @Get(":id")

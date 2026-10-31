@@ -43,16 +43,16 @@ export function CredentialsForm({
   });
   const rootError = errors.root?.message;
 
+  const handleClearRootError = () => {
+    clearErrors("root");
+  };
+
   const { ref: emailRef, ...emailField } = register("email", {
     onChange: handleClearRootError,
   });
   const { ref: passwordRef, ...passwordField } = register("password", {
     onChange: handleClearRootError,
   });
-
-  const handleClearRootError = () => {
-    clearErrors("root");
-  };
 
   const handleFormSubmit = handleSubmit(async (credentials) => {
     try {

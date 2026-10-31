@@ -1,0 +1,15 @@
+:root {
+  --color-page: #f5fdff;
+  --color-ink: #111111;
+  --color-accent: #217aff;
+  --color-accent-soft: #ecf4fc;
+  --color-danger: #fc2c3c;
+  --color-card: #ffffff;
+  --color-on-bar: #ffffff;
+  --color-muted: #8b939c;
+  --color-line: #d5dde3;
+  --color-check: #a8b3bd;
+  --color-check-disabled: #d0d7de;
+  --color-portrait: #d7e3ee;
+  --color-portrait-ink: #33414d;
+}

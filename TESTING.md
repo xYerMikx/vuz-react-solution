@@ -76,4 +76,5 @@ Characters, against the seeded database:
 - `universe=mortal kombat` returns only that universe
 - filters contain both `grapple` and `grappling`
 - a garbage cursor is `400` / `VALIDATION_ERROR`, and id `999999` is `404` / `CHARACTER_NOT_FOUND`
+- `GET /characters/by-ids?ids=1,2` returns those characters in that order, with tags and abilities; a seventh id, a duplicate, or a non-integer is `400` / `VALIDATION_ERROR`; an unknown id is `404` / `CHARACTER_NOT_FOUND`
 - after Scorpion is renamed in the database, the cached list still says Scorpion until `chars:version` is incremented
