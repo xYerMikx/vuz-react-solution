@@ -8,6 +8,7 @@ import {
 import { Prisma } from "@generated/prisma/client";
 
 import { PrismaService } from "@/prisma/prisma.service";
+import { SquadRealtime } from "@/realtime/squad-realtime";
 
 import { type CreateSquadDto } from "./dto/create-squad.dto";
 import { type UpdateSquadDto } from "./dto/update-squad.dto";
@@ -55,7 +56,10 @@ type Transaction = Prisma.TransactionClient;
 
 @Injectable()
 export class SquadsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: SquadRealtime,
+  ) {}
 
   async list(userId: string): Promise<SquadSummary[]> {
     const squads = await this.prisma.squad.findMany({
@@ -85,13 +89,17 @@ export class SquadsService {
       await this.replaceMembers(tx, squad.id, characterIds);
       return squad.id;
     });
-    return this.findOne(userId, squadId);
+    const squad = await this.findOne(userId, squadId);
+
+    await this.realtime.publishSquad(userId, squad, characterIds.length > 0);
+
+    return squad;
   }
 
   async findOne(userId: string, squadId: string): Promise<SquadDetail> {
     const squad = await this.prisma.squad.findFirst({
       where: { id: squadId, userId },
-      select: { id: true, name: true, members: memberInclude },
+      select: { id: true, name: true, updatedAt: true, members: memberInclude },
     });
     if (!squad) throw this.squadNotFound();
     const statistics = await this.loadStatistics(squadId);
@@ -123,7 +131,15 @@ export class SquadsService {
         await this.replaceMembers(tx, squadId, body.characterIds);
       }
     });
-    return this.findOne(userId, squadId);
+    const squad = await this.findOne(userId, squadId);
+
+    await this.realtime.publishSquad(
+      userId,
+      squad,
+      body.characterIds !== undefined,
+    );
+
+    return squad;
   }
 
   async remove(userId: string, squadId: string): Promise<void> {
@@ -131,6 +147,11 @@ export class SquadsService {
       await this.lockSquad(tx, userId, squadId);
       await tx.squad.delete({ where: { id: squadId } });
     });
+    await this.realtime.publishSquadRemoved(
+      userId,
+      squadId,
+      new Date().toISOString(),
+    );
   }
 
   async addMember(
@@ -164,7 +185,11 @@ export class SquadsService {
         this.rethrowConstraint(error);
       }
     });
-    return this.findOne(userId, squadId);
+    const squad = await this.findOne(userId, squadId);
+
+    await this.realtime.publishSquad(userId, squad, true);
+
+    return squad;
   }
 
   async removeMember(
@@ -188,7 +213,11 @@ export class SquadsService {
         where: { squadId_characterId: { squadId, characterId } },
       });
     });
-    return this.findOne(userId, squadId);
+    const squad = await this.findOne(userId, squadId);
+
+    await this.realtime.publishSquad(userId, squad, true);
+
+    return squad;
   }
 
   private async lockSquad(

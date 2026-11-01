@@ -19,3 +19,10 @@ export function getNextSquadSummaries(
     itemIndex === index ? summary : item,
   );
 }
+
+export function getSquadSummariesAfterRemoval(
+  summaries: readonly SquadSummary[],
+  squadId: string,
+): SquadSummary[] {
+  return summaries.filter((squad) => squad.id !== squadId);
+}
