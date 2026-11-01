@@ -11,6 +11,8 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { ApiOkResponse, ApiOperation, ApiTags } from "@nestjs/swagger";
 
+import { SquadRealtime } from "@/realtime/squad-realtime";
+
 import { AccessTokenGuard } from "./access-token.guard";
 import {
   clearSessionCookies,
@@ -36,6 +38,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly config: ConfigService,
+    private readonly realtime: SquadRealtime,
   ) {}
 
   @Post("register")
@@ -91,8 +94,12 @@ export class AuthController {
     @Req() request: CookieRequest,
     @Res({ passthrough: true }) response: CookieResponse,
   ): Promise<void> {
-    await this.auth.logout(this.refreshCookie(request));
+    const userId = await this.auth.logout(this.refreshCookie(request));
     clearSessionCookies(response, this.config);
+
+    if (userId) {
+      this.realtime.endSession(userId);
+    }
   }
 
   @Get("me")

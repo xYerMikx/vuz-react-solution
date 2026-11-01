@@ -68,6 +68,12 @@ Squads, against PostgreSQL, with two registered users. The guard is on every rou
 - two parallel adds of the same character finish as one `201` and one `409`, and the squad has 1 member
 - ability averages match the seeded scores and change after a member is removed
 
+Realtime, against PostgreSQL and Redis. Two sockets use the access cookie:
+
+- a handshake without the cookie is rejected
+- creating a squad reaches the owner's other socket as `squad.updated` and does not reach another user
+- `popularity.updated` reports the same pick count as `SquadMember` for the character both users added
+
 Characters, against the seeded database:
 
 - a page of one character, then the next page, and the ids differ

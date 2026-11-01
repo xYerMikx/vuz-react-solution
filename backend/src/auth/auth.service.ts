@@ -151,13 +151,23 @@ export class AuthService {
     });
   }
 
-  async logout(rawToken: string | undefined): Promise<void> {
-    if (!rawToken) return;
+  async logout(rawToken: string | undefined): Promise<string | null> {
+    if (!rawToken) {
+      return null;
+    }
+
+    const tokenHash = hashToken(rawToken);
+    const row = await this.prisma.refreshToken.findFirst({
+      where: { tokenHash },
+      select: { userId: true },
+    });
 
     await this.prisma.refreshToken.updateMany({
-      where: { tokenHash: hashToken(rawToken), revokedAt: null },
+      where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date() },
     });
+
+    return row?.userId ?? null;
   }
 
   async me(userId: string): Promise<PublicUser> {

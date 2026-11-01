@@ -1,6 +1,10 @@
 import { baseApi } from "@shared/api/base-api";
 
-import { getNextSquadSummaries } from "./get-next-squad-summaries";
+import {
+  getNextSquadSummaries,
+  getSquadSummariesAfterRemoval,
+} from "./get-next-squad-summaries";
+import { isStaleSquadRevision } from "./is-stale-squad-revision";
 import type {
   CreateSquadArgs,
   MemberArgs,
@@ -21,12 +25,13 @@ async function cacheFulfilledSquad(
   }
 }
 
-function saveSquad(
-  squad: SquadDetail,
-  dispatch: {
-    (action: unknown): unknown;
-  },
-): void {
+type SquadDispatch = (action: unknown) => unknown;
+
+export function saveSquad(squad: SquadDetail, dispatch: SquadDispatch): void {
+  if (isStaleSquadRevision(squad.id, squad.updatedAt)) {
+    return;
+  }
+
   dispatch(squadApi.util.upsertQueryData("getSquad", squad.id, squad));
   dispatch(
     squadApi.util.updateQueryData("listSquads", undefined, (summaries) =>
@@ -35,13 +40,31 @@ function saveSquad(
   );
 }
 
+export function removeSquad(
+  squadId: string,
+  updatedAt: string,
+  dispatch: SquadDispatch,
+): void {
+  if (isStaleSquadRevision(squadId, updatedAt)) {
+    return;
+  }
+
+  dispatch(
+    squadApi.util.updateQueryData("listSquads", undefined, (summaries) =>
+      getSquadSummariesAfterRemoval(summaries, squadId),
+    ),
+  );
+}
+
 export const squadApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     listSquads: build.query<SquadSummary[], void>({
       query: () => "/squads",
+      providesTags: ["Squad"],
     }),
     getSquad: build.query<SquadDetail, string>({
       query: (squadId) => `/squads/${squadId}`,
+      providesTags: ["Squad"],
     }),
     createSquad: build.mutation<SquadDetail, CreateSquadArgs>({
       query: (body) => ({ url: "/squads", method: "POST", body }),

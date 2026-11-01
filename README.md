@@ -93,7 +93,7 @@ The catalogue changes only when the seed runs. The seed increments `chars:versio
 
 The hash covers search, tags, universe, limit, cursor and sort. Tags are sorted before hashing, so `robot,alien` and `alien,robot` are the same request
 
-Each entry lives for 10 minutes. After a new seed the version no longer matches, so old keys are never read and expire on their own
+Each entry lives for 10 minutes. Invalidation is the version counter. After a new seed `chars:version` no longer matches, so old keys are never read and expire on their own. The catalogue has no write API, so nothing else needs to invalidate it
 
 ### Auth
 
@@ -168,3 +168,32 @@ The dev server is also http://localhost:5173, so stop the `frontend` container f
 | `COOKIE_SECURE`     | Variable | `false`                                              |
 | `CORS_ORIGIN`       | Variable | Origin of the page under test                        |
 | `PORT`              | Variable | `3000`                                               |
+
+## Bonus features
+
+Shipped:
+
+- Redis read-through cache for the character list and the filter lists, with version invalidation and a 10-minute TTL. If Redis is down, the API reads PostgreSQL and still answers
+- Keyset pagination on `(name, id)` instead of `OFFSET`
+- A GIN trigram index on `Character.name` for the search
+- `GET /characters/by-ids` so the squad screen loads its six characters in one request
+- A WebSocket gateway at `/api/v1/ws`, authenticated with the same access cookie. A squad change is pushed to that user's other sessions. The five most-picked characters are broadcast to every connected client, and the screen shows them under the squad header. A Redis adapter carries the events when more than one API process is running
+- GitHub Actions runs the unit tests and the e2e tests against PostgreSQL 18 and Redis
+
+## Trade-offs
+
+The cache is invalidated by bumping `chars:version` instead of deleting keys. A scan on every seed would block Redis for a catalogue that only changes when the seed runs. Stale keys cost nothing until their TTL, and no reader can see them
+
+Character detail and `by-ids` are not cached. Both are primary-key reads, and the set of ids on a squad changes on every click. A cache there would need an invalidation path on every squad edit for a query that is already one round trip
+
+The screen keeps a single squad named `My team` and has no universe control. The API still has full squad CRUD and the universe filter. The design has neither a name field nor a universe control, so the UI does not invent them
+
+Tokens stay in `httpOnly` cookies with `SameSite=Strict`. That rules out a frontend and an API on two different sites. One host, or two ports on localhost, is the setup this repository runs
+
+`squad.updated` and `squad.deleted` carry `updatedAt`. The screen remembers the newest value per squad and drops an older snapshot, so two API processes can publish out of order without rolling the squad backwards. A socket that connects again refetches the squad list and the open squad; events from while it was disconnected are gone. Logout emits `session.ended` to the user's room and disconnects those sockets, including ones on another API process. The client stops reconnecting and returns to the login screen. An access cookie on another device stays valid until it expires; the socket does not reconnect by itself. The browser opens a WebSocket directly and does not fall back to long-polling, so a load balancer does not have to pin the handshake to one process
+
+## With more time
+
+MongoDB would store an append-only activity log (created a squad, added a character, removed a character) without putting that write on the squad transaction
+
+The API container seeds on every start. That is what makes a fresh machine load the catalogue, and it also bumps the cache version. A deployed process would migrate on start and seed only when the catalogue is empty

@@ -13,8 +13,6 @@ const rawBaseQuery = fetchBaseQuery({
   credentials: "include",
 });
 
-type RawBaseQuery = typeof rawBaseQuery;
-
 const NO_REFRESH = [
   "/auth/login",
   "/auth/register",
@@ -24,38 +22,27 @@ const NO_REFRESH = [
 
 let refreshInFlightPromise: Promise<boolean> | null = null;
 
+export function refreshAccess(): Promise<boolean> {
+  if (!refreshInFlightPromise) {
+    refreshInFlightPromise = fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((response) => response.ok)
+      .finally(() => {
+        refreshInFlightPromise = null;
+      });
+  }
+
+  return refreshInFlightPromise;
+}
+
 function requestPath(args: string | FetchArgs): string {
   if (typeof args === "string") {
     return args;
   }
 
   return args.url;
-}
-
-async function requestRefresh(
-  api: Parameters<RawBaseQuery>[1],
-  extraOptions: Parameters<RawBaseQuery>[2],
-): Promise<boolean> {
-  const refresh = await rawBaseQuery(
-    { url: "/auth/refresh", method: "POST" },
-    api,
-    extraOptions,
-  );
-
-  return !refresh.error;
-}
-
-function refreshSession(
-  api: Parameters<RawBaseQuery>[1],
-  extraOptions: Parameters<RawBaseQuery>[2],
-): Promise<boolean> {
-  if (!refreshInFlightPromise) {
-    refreshInFlightPromise = requestRefresh(api, extraOptions).finally(() => {
-      refreshInFlightPromise = null;
-    });
-  }
-
-  return refreshInFlightPromise;
 }
 
 const baseQueryWithReauth: BaseQueryFn<
@@ -71,7 +58,7 @@ const baseQueryWithReauth: BaseQueryFn<
     return result;
   }
 
-  const refreshed = await refreshSession(api, extraOptions);
+  const refreshed = await refreshAccess();
 
   if (!refreshed) {
     return result;
@@ -83,5 +70,6 @@ const baseQueryWithReauth: BaseQueryFn<
 export const baseApi = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
+  tagTypes: ["Squad"],
   endpoints: () => ({}),
 });

@@ -6,6 +6,8 @@ import {
   useGetCharactersByIdsQuery,
   useListCharactersQuery,
 } from "@features/characters/api";
+import { PopularityStrip } from "@features/realtime/popularity-strip";
+import type { CharacterPopularity } from "@features/realtime/model";
 import type { RosterCharacter } from "@features/squad/roster-character";
 import { useRoster } from "@features/squad/use-roster";
 import logo from "@shared/assets/mortal-kombat-logo.webp";
@@ -23,6 +25,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 interface SquadBuilderProps {
   loggingOut: boolean;
+  popularity: CharacterPopularity[];
   onLogout: () => void;
 }
 
@@ -31,7 +34,11 @@ interface PageRequest {
   cursor?: string;
 }
 
-export function SquadBuilder({ loggingOut, onLogout }: SquadBuilderProps) {
+export function SquadBuilder({
+  loggingOut,
+  popularity,
+  onLogout,
+}: SquadBuilderProps) {
   const [search, setSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [myTeam, setMyTeam] = useState(false);
@@ -176,6 +183,7 @@ export function SquadBuilder({ loggingOut, onLogout }: SquadBuilderProps) {
             onRemove={handleRemove}
           />
         )}
+        {popularity.length > 0 && <PopularityStrip characters={popularity} />}
         {roster.rosterError && (
           <p className={styles.message}>{roster.rosterError}</p>
         )}

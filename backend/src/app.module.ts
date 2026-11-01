@@ -6,6 +6,7 @@ import { CharactersModule } from "@/characters/characters.module";
 import { validateEnvironment } from "@/config/environment";
 import { HealthModule } from "@/health/health.module";
 import { PrismaModule } from "@/prisma/prisma.module";
+import { RealtimeModule } from "@/realtime/realtime.module";
 import { RedisModule } from "@/redis/redis.module";
 import { SquadsModule } from "@/squads/squads.module";
 
@@ -14,6 +15,7 @@ import { SquadsModule } from "@/squads/squads.module";
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     PrismaModule,
     RedisModule,
+    RealtimeModule,
     HealthModule,
     CharactersModule,
     AuthModule,

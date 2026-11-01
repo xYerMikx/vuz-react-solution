@@ -18,6 +18,7 @@ export interface SquadStatisticResponse {
 export interface SquadDetail {
   id: string;
   name: string;
+  updatedAt: string;
   members: SquadMemberResponse[];
   statistics: SquadStatisticResponse[];
 }
@@ -33,12 +34,18 @@ export interface SquadMemberRow {
 }
 
 export function toSquadDetail(
-  squad: { id: string; name: string; members: SquadMemberRow[] },
+  squad: {
+    id: string;
+    name: string;
+    updatedAt: Date;
+    members: SquadMemberRow[];
+  },
   statistics: SquadStatisticResponse[],
 ): SquadDetail {
   return {
     id: squad.id,
     name: squad.name,
+    updatedAt: squad.updatedAt.toISOString(),
     members: squad.members.map((member) => ({
       position: member.position,
       character: {

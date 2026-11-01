@@ -27,6 +27,7 @@ export interface SquadStatistic {
 export interface SquadDetail {
   id: string;
   name: string;
+  updatedAt: string;
   members: SquadMember[];
   statistics: SquadStatistic[];
 }
