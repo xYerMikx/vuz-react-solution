@@ -2,11 +2,11 @@ services:
   postgres:
     image: postgres:18-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-squad}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-squad}
+      POSTGRES_DB: ${POSTGRES_DB:-squad}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql
     healthcheck:
@@ -22,7 +22,7 @@ services:
   redis:
     image: redis:8.8-alpine
     ports:
-      - "${REDIS_PORT}:6379"
+      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -34,14 +34,14 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     ports:
-      - "${PORT}:3000"
+      - "${PORT:-3000}:3000"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-squad}:${POSTGRES_PASSWORD:-squad}@postgres:5432/${POSTGRES_DB:-squad}
       REDIS_URL: redis://redis:6379
-      PORT: ${PORT}
-      CORS_ORIGIN: ${CORS_ORIGIN}
-      JWT_SECRET: ${JWT_SECRET}
-      COOKIE_SECURE: ${COOKIE_SECURE}
+      PORT: ${PORT:-3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-please}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,7 +65,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL}
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api/v1}
     ports:
       - "${FRONTEND_PORT:-5173}:80"
     depends_on:

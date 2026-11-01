@@ -14,10 +14,12 @@ backend/    NestJS API (PostgreSQL, Redis)
 
 ```bash
 cp .env.example .env
-docker compose up -d --build
+cp frontend/.env.example frontend/.env
+cp backend/.env.example backend/.env
+docker compose up --build
 ```
 
-That starts PostgreSQL, Redis, the API, and the squad screen. The API container applies migrations and seeds the characters before it listens. The frontend container is nginx serving the Vite build
+That starts PostgreSQL, Redis, the API, and the squad screen. The API container applies migrations and seeds the characters before it listens. The frontend container is nginx serving the Vite build. The defaults in `docker-compose.yml` are the same public placeholders as `.env.example`, there so a missing variable does not stop the one-command start. This is not made for production deployment with them. Prod deployment needs a real `POSTGRES_PASSWORD`, a real `JWT_SECRET`, and `COOKIE_SECURE=true` when the site is served over HTTPS
 
 - App: http://localhost:5173
 - API: http://localhost:3000/api/v1
@@ -57,7 +59,7 @@ erDiagram
   Character ||--o{ SquadMember : joins
 ```
 
-`Character.id` is the id from the source JSON, not a sequence. `Character.name` has a trigram GIN index for the search. `SquadMember` is unique on `(squadId, characterId)`. A refresh token row stores the SHA-256 of the cookie, not the cookie itself.
+`Character.id` is the id from the source JSON, not a sequence. `Character.name` has a trigram GIN index for the search. `SquadMember` is unique on `(squadId, characterId)` and indexed on `characterId`, which is the column the popularity aggregate groups by. A refresh token row stores the SHA-256 of the cookie, not the cookie itself
 
 ## Decisions
 
@@ -150,7 +152,7 @@ npm install
 npm run dev
 ```
 
-The dev server is also http://localhost:5173, so stop the `frontend` container first or the port is taken. `frontend/.env` supplies `VITE_API_URL` for that process. The image build uses the root `.env` instead.
+The dev server is also http://localhost:5173, so stop the `frontend` container first or the port is taken. `frontend/.env` supplies `VITE_API_URL` for that process. The image build uses `VITE_API_URL` from the root `.env` when that file exists, and otherwise `http://localhost:3000/api/v1`
 
 ## CI
 
@@ -190,7 +192,7 @@ The screen keeps a single squad named `My team` and has no universe control. The
 
 Tokens stay in `httpOnly` cookies with `SameSite=Strict`. That rules out a frontend and an API on two different sites. One host, or two ports on localhost, is the setup this repository runs
 
-`squad.updated` and `squad.deleted` carry `updatedAt`. The screen remembers the newest value per squad and drops an older snapshot, so two API processes can publish out of order without rolling the squad backwards. A socket that connects again refetches the squad list and the open squad; events from while it was disconnected are gone. Logout emits `session.ended` to the user's room and disconnects those sockets, including ones on another API process. The client stops reconnecting and returns to the login screen. An access cookie on another device stays valid until it expires; the socket does not reconnect by itself. The browser opens a WebSocket directly and does not fall back to long-polling, so a load balancer does not have to pin the handshake to one process
+`squad.updated` and `squad.deleted` carry `updatedAt`. A roster change updates the squad row in the same transaction, and the stored mark is at least one millisecond after the previous one. Deleting a squad publishes a mark one millisecond after that row's last value. The screen remembers the newest value per squad and drops an older snapshot, so two API processes can publish out of order without rolling the squad backwards. If the popularity aggregate fails after the squad event is sent, the squad request still succeeds. A socket that connects again refetches the squad list and the open squad; events from while it was disconnected are gone. Logout emits `session.ended` to the user's room and disconnects those sockets, including ones on another API process. The client stops reconnecting and returns to the login screen. An access cookie on another device stays valid until it expires; the socket does not reconnect by itself. The browser opens a WebSocket directly and does not fall back to long-polling, so a load balancer does not have to pin the handshake to one process
 
 ## With more time
 

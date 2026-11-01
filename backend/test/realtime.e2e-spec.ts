@@ -9,6 +9,9 @@ import request from "supertest";
 import { AppModule } from "@/app.module";
 import { PrismaService } from "@/prisma/prisma.service";
 import { attachRealtime } from "@/realtime/attach-realtime";
+import type { RealtimeGateway } from "@/realtime/realtime.gateway";
+import { SquadRealtime } from "@/realtime/squad-realtime";
+import type { SquadDetail } from "@/squads/squad.mapper";
 import {
   getCharacterPopularity,
   type CharacterPopularity,
@@ -233,5 +236,37 @@ describe("Realtime", () => {
 
     await ended;
     await closed;
+  });
+});
+
+describe("SquadRealtime", () => {
+  it("publishes the squad when the popularity query fails", async () => {
+    const published: SquadDetail[] = [];
+    const gateway = {
+      emitSquad(_userId: string, squad: SquadDetail) {
+        published.push(squad);
+      },
+      emitPopularity() {
+        throw new Error("popularity was emitted");
+      },
+    };
+    const prisma = {
+      $queryRaw: () => Promise.reject(new Error("popularity failed")),
+    };
+    const realtime = new SquadRealtime(
+      gateway as unknown as RealtimeGateway,
+      prisma as unknown as PrismaService,
+    );
+    const squad: SquadDetail = {
+      id: "squad",
+      name: "My team",
+      updatedAt: "2026-11-02T00:00:00.000Z",
+      members: [],
+      statistics: [],
+    };
+
+    await realtime.publishSquad("user", squad, true);
+
+    expect(published).toEqual([squad]);
   });
 });

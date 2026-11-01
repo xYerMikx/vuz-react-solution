@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 
 import { PrismaService } from "@/prisma/prisma.service";
 import type { SquadDetail } from "@/squads/squad.mapper";
@@ -8,6 +8,8 @@ import { RealtimeGateway } from "./realtime.gateway";
 
 @Injectable()
 export class SquadRealtime {
+  private readonly logger = new Logger(SquadRealtime.name);
+
   constructor(
     private readonly gateway: RealtimeGateway,
     private readonly prisma: PrismaService,
@@ -41,7 +43,13 @@ export class SquadRealtime {
   }
 
   private async publishPopularity(): Promise<void> {
-    const characters = await getCharacterPopularity(this.prisma);
-    this.gateway.emitPopularity(characters);
+    try {
+      const characters = await getCharacterPopularity(this.prisma);
+      this.gateway.emitPopularity(characters);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to publish character popularity: ${error instanceof Error ? error.message : "unknown error"}`,
+      );
+    }
   }
 }
