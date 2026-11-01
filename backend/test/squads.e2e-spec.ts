@@ -29,6 +29,13 @@ function readSquadId(body: unknown): string {
   return body.id;
 }
 
+function readUpdatedAt(body: unknown): string {
+  if (!isRecord(body) || typeof body.updatedAt !== "string") {
+    throw new Error("Unexpected squad revision");
+  }
+  return body.updatedAt;
+}
+
 function readMembers(body: unknown): { id: number }[] {
   if (!isRecord(body) || !Array.isArray(body.members)) {
     throw new Error("Unexpected squad payload");
@@ -227,6 +234,49 @@ describe("Squads", () => {
       .set("Cookie", ownerCookie)
       .expect(404);
     expect(readErrorCode(gone.body)).toBe("SQUAD_NOT_FOUND");
+  });
+
+  it("moves updatedAt when the roster changes", async () => {
+    const server = app.getHttpServer();
+    const first = characterIds[0];
+    const second = characterIds[1];
+
+    if (first === undefined || second === undefined) {
+      throw new Error("Missing characters for the revision");
+    }
+
+    const created = await request(server)
+      .post("/api/v1/squads")
+      .set("Cookie", ownerCookie)
+      .send({ name: "Revision" })
+      .expect(201);
+    const squadId = readSquadId(created.body);
+    const createdAt = readUpdatedAt(created.body);
+
+    const added = await request(server)
+      .post(`/api/v1/squads/${squadId}/characters/${first}`)
+      .set("Cookie", ownerCookie)
+      .expect(201);
+    const addedAt = readUpdatedAt(added.body);
+
+    expect(addedAt > createdAt).toBe(true);
+    expect(readMembers(added.body).map((member) => member.id)).toEqual([first]);
+
+    const replaced = await request(server)
+      .patch(`/api/v1/squads/${squadId}`)
+      .set("Cookie", ownerCookie)
+      .send({ characterIds: [second] })
+      .expect(200);
+    const replacedAt = readUpdatedAt(replaced.body);
+
+    expect(replacedAt > addedAt).toBe(true);
+
+    const removed = await request(server)
+      .delete(`/api/v1/squads/${squadId}/characters/${second}`)
+      .set("Cookie", ownerCookie)
+      .expect(200);
+
+    expect(readUpdatedAt(removed.body) > replacedAt).toBe(true);
   });
 
   it("rejects a duplicate member and an unknown character", async () => {

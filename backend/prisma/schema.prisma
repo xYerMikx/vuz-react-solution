@@ -104,4 +104,5 @@ model SquadMember {
   character   Character @relation(fields: [characterId], references: [id])
 
   @@id([squadId, characterId])
+  @@index([characterId])
 }

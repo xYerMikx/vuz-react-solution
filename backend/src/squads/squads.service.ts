@@ -87,6 +87,8 @@ export class SquadsService {
       const squad = await tx.squad.create({ data: { userId, name } });
       await this.lockSquad(tx, userId, squad.id);
       await this.replaceMembers(tx, squad.id, characterIds);
+      await this.touchSquad(tx, squad.id);
+
       return squad.id;
     });
     const squad = await this.findOne(userId, squadId);
@@ -130,6 +132,8 @@ export class SquadsService {
       if (body.characterIds) {
         await this.replaceMembers(tx, squadId, body.characterIds);
       }
+
+      await this.touchSquad(tx, squadId);
     });
     const squad = await this.findOne(userId, squadId);
 
@@ -143,15 +147,22 @@ export class SquadsService {
   }
 
   async remove(userId: string, squadId: string): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
+    const updatedAt = await this.prisma.$transaction(async (tx) => {
       await this.lockSquad(tx, userId, squadId);
+      const squad = await tx.squad.findUnique({
+        where: { id: squadId },
+        select: { updatedAt: true },
+      });
+
+      if (!squad) {
+        throw this.squadNotFound();
+      }
+
       await tx.squad.delete({ where: { id: squadId } });
+
+      return getNextSquadRevision(squad.updatedAt).toISOString();
     });
-    await this.realtime.publishSquadRemoved(
-      userId,
-      squadId,
-      new Date().toISOString(),
-    );
+    await this.realtime.publishSquadRemoved(userId, squadId, updatedAt);
   }
 
   async addMember(
@@ -184,6 +195,8 @@ export class SquadsService {
       } catch (error) {
         this.rethrowConstraint(error);
       }
+
+      await this.touchSquad(tx, squadId);
     });
     const squad = await this.findOne(userId, squadId);
 
@@ -212,12 +225,29 @@ export class SquadsService {
       await tx.squadMember.delete({
         where: { squadId_characterId: { squadId, characterId } },
       });
+      await this.touchSquad(tx, squadId);
     });
     const squad = await this.findOne(userId, squadId);
 
     await this.realtime.publishSquad(userId, squad, true);
 
     return squad;
+  }
+
+  private async touchSquad(tx: Transaction, squadId: string): Promise<void> {
+    const squad = await tx.squad.findUnique({
+      where: { id: squadId },
+      select: { updatedAt: true },
+    });
+
+    if (!squad) {
+      throw this.squadNotFound();
+    }
+
+    await tx.squad.update({
+      where: { id: squadId },
+      data: { updatedAt: getNextSquadRevision(squad.updatedAt) },
+    });
   }
 
   private async lockSquad(
@@ -339,6 +369,10 @@ function isPrismaCode(error: unknown, code: string): boolean {
   return (
     error instanceof Prisma.PrismaClientKnownRequestError && error.code === code
   );
+}
+
+function getNextSquadRevision(previous: Date): Date {
+  return new Date(Math.max(Date.now(), previous.getTime() + 1));
 }
 
 function readAverage(value: unknown): number {
